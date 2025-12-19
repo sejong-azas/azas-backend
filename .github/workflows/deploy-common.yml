@@ -1,0 +1,196 @@
+name: "deploy-common"
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        type: string
+      branch_upper:
+        type: string
+      tag_prefix:
+        type: string
+      dockerfile:
+        type: string
+      instance_env:
+        type: string
+
+    secrets:
+      ENV_CONTENT:
+        required: true
+      AWS_REGION:
+        required: true
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      TK_GITHUB_ACCESS_TOKEN:
+        required: true
+      TK_GITHUB_ACCESS_TOKEN_OWNER:
+        required: true
+      DB_HOST:
+        required: true
+      DB_NAME:
+        required: true
+      DB_PORT:
+        required: true
+      DB_ROOT_PASSWORD:
+        required: true
+      NETWORK_NAME:
+          required: true
+
+jobs:
+  # 1. 인스턴스 접속 정보 (EC2 ID -> GCE 이름, Zone)
+  get-instance-id:
+    name: Get EC2 Instance ID
+    runs-on: ubuntu-latest
+    outputs:
+      instance_id: ${{ steps.get_instance_id.outputs.instance_id }}
+    steps:
+      - name: AWS Credentials 설정 (GitHub secrets 사용)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: 인스턴스 ID 가져오기
+        id: get_instance_id
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=azas-server" \
+                      "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId" \
+            --output text)
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+
+  # 2. 태그 및 릴리스 생성 (단순한 파이프라인을 위해 GHCR 사용)
+  makeTagAndRelease:
+    name: Create Tag & Release (${{ inputs.branch }})
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.create_tag.outputs.new_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Tag
+        id: create_tag
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag_prefix: ${{ inputs.tag_prefix }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.create_tag.outputs.new_tag }}
+          release_name: "${{ inputs.branch_upper }} Release ${{ steps.create_tag.outputs.new_tag }}"
+          body: ${{ steps.create_tag.outputs.changelog }}
+
+  # 3. 도커 이미지 빌드 및 푸시 (GitHub Container Registry)
+  buildImageAndPush:
+    name: 도커 이미지 빌드와 푸시 (${{ inputs.branch }})
+    needs: makeTagAndRelease
+    runs-on: ubuntu-latest
+    outputs:
+      owner_lc: ${{ steps.export_owner.outputs.owner_lc }}
+      image_name: ${{ steps.export_image.outputs.image_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker Buildx 설치
+        uses: docker/setup-buildx-action@v2
+
+      - name: 레지스트리 로그인
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: set lower case owner name
+        id: export_owner
+        run: |
+          OWNER_LC="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "owner_lc=$OWNER_LC" >> $GITHUB_OUTPUT
+
+      - name: export image name
+        id: export_image
+        run: |
+          echo "image_name=azas-${{ inputs.branch }}" >> $GITHUB_OUTPUT
+
+      - name: 빌드 앤 푸시
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ${{ inputs.dockerfile }}
+          push: true
+          cache-from: type=registry,ref=ghcr.io/${{ steps.export_owner.outputs.owner_lc }}/${{ steps.export_image.outputs.image_name }}:cache
+          cache-to: type=registry,ref=ghcr.io/${{ steps.export_owner.outputs.owner_lc }}/${{ steps.export_image.outputs.image_name }}:cache,mode=max
+          tags: |
+            ghcr.io/${{ steps.export_owner.outputs.owner_lc }}/${{ steps.export_image.outputs.image_name }}:${{ needs.makeTagAndRelease.outputs.tag_name }},
+            ghcr.io/${{ steps.export_owner.outputs.owner_lc }}/${{ steps.export_image.outputs.image_name }}:latest
+
+  # 4. 인스턴스에 배포
+  deploy:
+    name: EC2에 배포 (${{ inputs.branch }})
+    runs-on: ubuntu-latest
+    needs: [buildImageAndPush, get-instance-id]
+    steps:
+      - name: AWS SSM Send-Command
+        uses: peterkimzz/aws-ssm-send-command@master
+        id: ssm
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          instance-ids: ${{ needs.get-instance-id.outputs.instance_id }}
+          working-directory: /
+          comment: Deploy
+          command: |
+            set -e
+            export HOME=/root
+            
+            # 도커 로그인
+            echo "${{ secrets.TK_GITHUB_ACCESS_TOKEN }}" \
+              | docker login ghcr.io \
+                  -u ${{ secrets.TK_GITHUB_ACCESS_TOKEN_OWNER }} \
+                  --password-stdin
+            
+            # 환경 변수
+            echo "${{ secrets.ENV_CONTENT }}" | base64 -d > /app/.env
+
+            # 네트워크 생성
+            docker network inspect \${NETWORK_NAME_RAW} >/dev/null 2>&1 || docker network create \${NETWORK_NAME_RAW}
+            
+            # MySQL 컨테이너 실행 (이미 실행 중이면 유지, 없으면 생성)
+            if [ ! "$(docker ps -q -f name=mysql-db)" ]; then
+              if [ "$(docker ps -aq -f status=exited -f name=mysql-db)" ]; then
+                docker rm mysql-db
+              fi
+              docker run -d --name '${{ secrets.DB_HOST }} \
+                --restart always \
+                --network common \
+                -e TZ=Asia/Seoul \
+                -e MYSQL_ROOT_PASSWORD='${{ secrets.DB_ROOT_PASSWORD }}' \
+                -e MYSQL_DATABASE='${{ secrets.DB_NAME }}' \
+                -p '${{ secrets.DB_PORT }}':'${{ secrets.DB_PORT }}' \
+                -v mysql_data:/var/lib/mysql \
+                mysql:8.0
+            
+              sleep 20
+            fi
+            
+            # app 컨테이너
+            docker pull ghcr.io/${{ needs.buildImageAndPush.outputs.owner_lc }}/${{ needs.buildImageAndPush.outputs.image_name }}:latest && \
+            docker stop app1 2>/dev/null || true && \
+            docker rm app1 2>/dev/null || true && \
+            docker run --restart always \
+              -e TZ=Asia/Seoul \
+              --env-file=/app/.env \
+              -d --name app1 -p 8080:8080 --network common \
+              -v /dockerProjects/logs:/app/logs \
+              ghcr.io/${{ needs.buildImageAndPush.outputs.owner_lc }}/${{ needs.buildImageAndPush.outputs.image_name }}:latest && \
+            docker rmi $(docker images -f "dangling=true" -q) || true
