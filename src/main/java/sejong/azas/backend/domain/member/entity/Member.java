@@ -44,31 +44,41 @@ public class Member extends BaseTimeEntity {
 
 	@Column(name = "chronotype")
 	private Float chronotype;
+	private String chronotypeInfo;
 
 	@Column(name = "noise_sensitivity")
 	private Float noiseSensitivity;
+	private String noiseSensitivityInfo;
 
 	@Column(name = "cleaning_cycle")
 	private Float cleaningCycle;
+	private String cleaningCycleInfo;
 
 	@Column(name = "indoor_activity")
 	private Float indoorActivity;
+	private String indoorActivityInfo;
 
 	@Column(name = "thermal_preference")
 	private Float thermalPreference;
+	private String thermalPreferenceInfo;
 
 	@Column(name = "alarm_habit")
 	private Float alarmHabit;
+	private String alarmHabitInfo;
 
 	@Column(name = "item_sharing")
 	private Float itemSharing;
+	private String itemSharingInfo;
 
 	@Column(name = "indoor_eating")
 	private Float indoorEating;
+	private String indoorEatingInfo;
 
 	@Column(name = "is_smoker")
 	private Float isSmoker;
+	private String isSmokerInfo;
 
 	@Column(name = "age_tolerance")
 	private Float ageTolerance;
+	private String ageToleranceInfo;
 }

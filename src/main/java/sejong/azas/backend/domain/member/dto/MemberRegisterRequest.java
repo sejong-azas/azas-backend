@@ -18,15 +18,25 @@ public record MemberRegisterRequest(
 	Long studentId,
 	Gender gender,
 	Float chronotype,
+	String chronotypeInfo,
 	Float noiseSensitivity,
+	String noiseSensitivityInfo,
 	Float cleaningCycle,
+	String cleaningCycleInfo,
 	Float indoorActivity,
+	String indoorActivityInfo,
 	Float thermalPreference,
+	String thermalPreferenceInfo,
 	Float alarmHabit,
+	String alarmHabitInfo,
 	Float itemSharing,
+	String itemSharingInfo,
 	Float indoorEating,
+	String indoorEatingInfo,
 	Float isSmoker,
-	Float ageTolerance
+	String isSmokerInfo,
+	Float ageTolerance,
+	String ageToleranceInfo
 ) {
 	public static Member of(MemberRegisterRequest request){
 		return Member.builder()
@@ -45,6 +55,16 @@ public record MemberRegisterRequest(
 			.indoorEating(request.indoorEating)
 			.isSmoker(request.isSmoker)
 			.ageTolerance(request.ageTolerance)
+			.chronotypeInfo(request.chronotypeInfo)
+			.noiseSensitivityInfo(request.noiseSensitivityInfo)
+			.cleaningCycleInfo(request.cleaningCycleInfo)
+			.indoorActivityInfo(request.indoorActivityInfo)
+			.thermalPreferenceInfo(request.thermalPreferenceInfo)
+			.alarmHabitInfo(request.alarmHabitInfo)
+			.itemSharingInfo(request.itemSharingInfo)
+			.indoorEatingInfo(request.indoorEatingInfo)
+			.isSmokerInfo(request.isSmokerInfo)
+			.ageToleranceInfo(request.ageToleranceInfo)
 			.build();
 	}
 }
