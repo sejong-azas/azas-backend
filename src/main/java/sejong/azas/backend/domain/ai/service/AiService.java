@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import lombok.RequiredArgsConstructor;
+import sejong.azas.backend.domain.ai.dto.AiPersonaRequest;
 import sejong.azas.backend.domain.ai.dto.PersonaRequest;
 import sejong.azas.backend.domain.ai.dto.PersonaResponse;
 
@@ -17,7 +18,7 @@ public class AiService {
 		return restClient.post()
 			.uri("/api/ai/persona")
 			.contentType(MediaType.APPLICATION_JSON)
-			.body(request)
+			.body(AiPersonaRequest.from(request))
 			.retrieve()
 			.body(PersonaResponse.class);
 	}
