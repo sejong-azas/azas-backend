@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import sejong.azas.backend.global.enums.Gender;
 import sejong.azas.backend.global.util.BaseTimeEntity;
 
 @Entity
@@ -31,4 +32,43 @@ public class Member extends BaseTimeEntity {
 
 	@Column(name = "password", nullable = false)
 	private String password;
+
+	@Column(name = "age")
+	private Integer age;
+
+	@Column(name = "student_id")
+	private Long studentId;
+
+	@Column(name = "gender")
+	private Gender gender;
+
+	@Column(name = "chronotype")
+	private Float chronotype;
+
+	@Column(name = "noise_sensitivity")
+	private Float noiseSensitivity;
+
+	@Column(name = "cleaning_cycle")
+	private Float cleaningCycle;
+
+	@Column(name = "indoor_activity")
+	private Float indoorActivity;
+
+	@Column(name = "thermal_preference")
+	private Float thermalPreference;
+
+	@Column(name = "alarm_habit")
+	private Float alarmHabit;
+
+	@Column(name = "item_sharing")
+	private Float itemSharing;
+
+	@Column(name = "indoor_eating")
+	private Float indoorEating;
+
+	@Column(name = "is_smoker")
+	private Float isSmoker;
+
+	@Column(name = "age_tolerance")
+	private Float ageTolerance;
 }

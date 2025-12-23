@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import sejong.azas.backend.domain.member.dto.MemberLoginRequest;
+import sejong.azas.backend.domain.member.dto.MemberRegisterRequest;
 import sejong.azas.backend.domain.member.service.MemberService;
 import sejong.azas.backend.global.util.BaseResponse;
 
@@ -19,7 +20,7 @@ public class MemberController {
 	private final MemberService memberService;
 
 	@PostMapping("/register")
-	public BaseResponse<?> register(@Valid @RequestBody MemberLoginRequest request) {
+	public BaseResponse<?> register(@Valid @RequestBody MemberRegisterRequest request) {
 		memberService.register(request);
 		return BaseResponse.success("회원가입에 성공했습니다");
 	}
