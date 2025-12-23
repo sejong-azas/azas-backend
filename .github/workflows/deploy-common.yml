@@ -46,7 +46,7 @@ jobs:
     outputs:
       instance_id: ${{ steps.get_instance_id.outputs.instance_id }}
     steps:
-      - name: AWS Credentials 설정 (GitHub secrets 사용)
+      - name: AWS Credentials 설정
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ secrets.AWS_REGION }}

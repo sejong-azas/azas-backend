@@ -34,6 +34,12 @@ spring:
         access-key: ${AWS_ACCESS_KEY_ID}
         secret-key: ${AWS_SECRET_ACCESS_KEY}
 
+custom:
+  jwt:
+    secret-key: ${JWT_SECRET}
+    access-expiration: ${JWT_ACCESS}
+    refresh_expiration: ${JWT_REFRESH}
+
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
