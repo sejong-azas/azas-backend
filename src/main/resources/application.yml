@@ -46,3 +46,4 @@ custom:
     secret-key: ${JWT_SECRET}
     access-expiration: ${JWT_ACCESS}
     refresh_expiration: ${JWT_REFRESH}
+  ai-server: ${PY_SERVER}
