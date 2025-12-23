@@ -166,10 +166,9 @@ jobs:
             docker network inspect "${{ secrets.NETWORK_NAME }}" >/dev/null 2>&1 || docker network create "${{ secrets.NETWORK_NAME }}"
             
             # MySQL 컨테이너 실행 (이미 실행 중이면 유지, 없으면 생성)
-            if [ ! "$(docker ps -q -f name=mysql-db)" ]; then
-              if [ "$(docker ps -aq -f status=exited -f name=mysql-db)" ]; then
-                docker rm mysql-db
-              fi
+            if [ ! "$(docker ps -q -f name="${{ secrets.DB_HOST }}")" ]; then
+              docker rm -f "${{ secrets.DB_HOST }}" 2>/dev/null || true
+              
               docker run -d --name "${{ secrets.DB_HOST }}" \
                 --restart always \
                 --network "${{ secrets.NETWORK_NAME }}" \
