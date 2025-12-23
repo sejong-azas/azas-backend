@@ -22,11 +22,14 @@ configurations {
 
 repositories {
     mavenCentral()
+
+    maven { url 'https://repo.spring.io/milestone' }
 }
 
 dependencyManagement {
     imports {
         mavenBom "io.awspring.cloud:spring-cloud-aws-dependencies:3.3.0"
+        mavenBom "org.springframework.ai:spring-ai-bom:1.0.0-M5"
     }
 }
 
