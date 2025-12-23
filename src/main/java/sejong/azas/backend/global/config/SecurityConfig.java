@@ -7,7 +7,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.frameoptions.XFrameOptionsHeaderWriter;
 
 @Configuration
@@ -25,7 +24,11 @@ public class SecurityConfig {
             )
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/login", "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**")
+                .requestMatchers(
+                    "/api/member/register",
+                    "/api/member/login",
+                    "/api/auth/refresh",
+                    "/swagger-ui/**", "/v3/api-docs/**", "/h2-console/**")
                 .permitAll()
                 .anyRequest().authenticated()
             );
